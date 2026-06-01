@@ -3,31 +3,61 @@
 @tailwind utilities;
 
 :root {
-  --foreground-rgb: 0, 0, 0;
-  --background-start-rgb: 214, 219, 220;
-  --background-end-rgb: 255, 255, 255;
+  --background: #0b1110;
+  --foreground: #f8fafc;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --foreground-rgb: 255, 255, 255;
-    --background-start-rgb: 0, 0, 0;
-    --background-end-rgb: 0, 0, 0;
-  }
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-width: 320px;
+  background: var(--background);
 }
 
 body {
-  color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-      to bottom,
-      transparent,
-      rgb(var(--background-end-rgb))
-    )
-    rgb(var(--background-start-rgb));
+  min-height: 100vh;
+  color: var(--foreground);
+  background: var(--background);
 }
 
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
+button,
+input,
+textarea {
+  border-radius: 6px;
+}
+
+textarea {
+  resize: vertical;
+}
+
+::selection {
+  color: #07100f;
+  background: #6ee7b7;
+}
+
+@layer components {
+  .analysis-copy {
+    color: #dbeafe;
+    font-size: 0.95rem;
+    line-height: 1.8;
+  }
+
+  .analysis-copy h3,
+  .analysis-copy h4 {
+    margin: 1.5rem 0 0.6rem;
+    color: #ffffff;
+    font-weight: 700;
+  }
+
+  .analysis-copy strong,
+  .chat-copy strong {
+    color: #ffffff;
+    font-weight: 700;
+  }
+
+  .chat-copy {
+    line-height: 1.7;
   }
 }

@@ -17,8 +17,8 @@ interface GreptileRepoStatusResponse {
     sha: string;
 }
 
-export async function waitForIndexing(repo: string): Promise<void> {
-    const encodedRepo = encodeURIComponent(`github:main:${repo}`);
+export async function waitForIndexing(repo: string, branch: string): Promise<void> {
+    const encodedRepo = encodeURIComponent(`github:${branch}:${repo}`);
     const statusEndpoint = `${GREPTILE_API_BASE}/repositories/${encodedRepo}`;
 
     for (let i = 0; i < MAX_POLLING_ATTEMPTS; i++) {

@@ -160,11 +160,22 @@ Please ensure the response is comprehensive, clear, and follows a logical struct
     
     
     // const implementationQuery = `Provide three different ways to implement the following feature from ideal codebase:\n\n${compatibilityAnalysis.message}\n\nFor each implementation, provide a brief explanation of its advantages and disadvantages.`;
-     const implementationSuggestions = await queryGreptile(userRepo, implementationQuery, userBranch);
+    const implementationSuggestions = await queryGreptile(userRepo, implementationQuery, userBranch);
 
     session.extractedFeature = extractedFeature.message;
     session.compatibilityAnalysis = compatibilityAnalysis.message;
     session.implementationSuggestions = implementationSuggestions.message;
+    session.analyses = [
+      ...(session.analyses || []),
+      {
+        featureTitle,
+        featureDescription,
+        extractedFeature: extractedFeature.message,
+        compatibilityAnalysis: compatibilityAnalysis.message,
+        implementationSuggestions: implementationSuggestions.message,
+      },
+    ];
+    session.updatedAt = new Date();
     await session.save();
 
     const combinedMessage = `${extractedFeature.message} ${implementationSuggestions.message}`;

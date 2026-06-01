@@ -22,10 +22,10 @@ export async function indexRepository(repo: string, branch: string): Promise<voi
         });
 
         console.log(`Indexing initiated for ${repo}. Response:`, response.data);
-        if(response.data={ response: 'repo already exists' }){
+        if (response.data?.response === 'repo already exists') {
             return 
         }
-        return await waitForIndexing(repo);
+        return await waitForIndexing(repo, branch);
     } catch (error) {
         if (axios.isAxiosError(error)) {
             console.error(`Error indexing repository ${repo}:`, error.response?.data || error.message);

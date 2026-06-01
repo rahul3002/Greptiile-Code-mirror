@@ -13,6 +13,43 @@ export interface ExtractionResult {
   };
 }
 
+export interface RepositorySnapshot {
+  fullName: string;
+  branch: string;
+  defaultBranch: string;
+  private: boolean;
+  htmlUrl: string;
+  latestCommitSha: string;
+}
+
+export interface FeatureAnalysisSummary {
+  _id: string;
+  featureTitle: string;
+  featureDescription: string;
+  createdAt: string;
+}
+
+export interface SessionSummary {
+  _id: string;
+  idealRepo: string;
+  userRepo: string;
+  idealBranch: string;
+  userBranch: string;
+  status?: 'validating' | 'indexing' | 'ready' | 'failed';
+  statusMessage?: string;
+  createdAt: string;
+  updatedAt?: string;
+  analyses?: FeatureAnalysisSummary[];
+}
+
+export interface SessionDetails extends SessionSummary {
+  sourceRepository?: RepositorySnapshot;
+  targetRepository?: RepositorySnapshot;
+  extractedFeature?: string;
+  compatibilityAnalysis?: string;
+  implementationSuggestions?: string;
+}
+
 export async function submitRepositories(
     idealRepo: string,
     userRepo: string,
@@ -100,4 +137,26 @@ export async function sendChatMessage(sessionId: string, chatInput: string) {
     console.error('Error in chat submission:', error);
     throw error;
   }
+}
+
+export async function getSessions(): Promise<SessionSummary[]> {
+  const response = await fetch('/api/sessions');
+
+  if (!response.ok) {
+    throw new Error('Failed to load sessions');
+  }
+
+  const data = await response.json();
+  return data.sessions || [];
+}
+
+export async function getSession(sessionId: string): Promise<SessionDetails> {
+  const response = await fetch(`/api/sessions/${sessionId}`);
+
+  if (!response.ok) {
+    throw new Error('Failed to load session');
+  }
+
+  const data = await response.json();
+  return data.session;
 }

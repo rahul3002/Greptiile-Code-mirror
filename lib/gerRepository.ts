@@ -17,5 +17,5 @@ export async function indexRepository(repo: string, branch: string): Promise<voi
         },
     });
 
-    await waitForIndexing(repo);
+    await waitForIndexing(repo, branch);
 }

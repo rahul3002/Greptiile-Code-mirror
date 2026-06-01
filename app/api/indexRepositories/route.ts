@@ -5,6 +5,7 @@ import { indexRepository } from '../../../lib/indexRepository';
 import Session from '../../../models/session';
 import { MongoError } from 'mongodb';
 import { dbConnect } from '@/lib/mongodb';
+import { normalizeRepoName, validateGitHubRepository } from '@/lib/github';
 
 interface IndexRepositoriesRequest {
   idealRepo: string;
@@ -16,7 +17,14 @@ interface IndexRepositoriesRequest {
 export async function POST(req: NextRequest) {
   try {
     const body: IndexRepositoriesRequest = await req.json();
-    const { idealRepo, userRepo, idealBranch, userBranch } = body;
+    const idealRepo = normalizeRepoName(body.idealRepo || '');
+    const userRepo = normalizeRepoName(body.userRepo || '');
+    const idealBranch = body.idealBranch?.trim();
+    const userBranch = body.userBranch?.trim();
+
+    if (!idealRepo || !userRepo || !idealBranch || !userBranch) {
+      return NextResponse.json({ error: 'Missing required repository fields' }, { status: 400 });
+    }
 
     await dbConnect();
 
@@ -32,8 +40,47 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({
         message: "Session already exists. Your repositories are ready to go.",
         sessionId: existingSession._id,
+        status: existingSession.status,
       });
     }
+
+    const session = new Session({
+      idealRepo,
+      userRepo,
+      idealBranch,
+      userBranch,
+      status: 'validating',
+      statusMessage: 'Validating repositories and branches',
+    });
+    await session.save();
+
+    let sourceRepository;
+    let targetRepository;
+
+    try {
+      [sourceRepository, targetRepository] = await Promise.all([
+        validateGitHubRepository(idealRepo, idealBranch),
+        validateGitHubRepository(userRepo, userBranch),
+      ]);
+    } catch (validationError) {
+      session.status = 'failed';
+      session.statusMessage =
+        validationError instanceof Error ? validationError.message : 'Repository validation failed';
+      session.updatedAt = new Date();
+      await session.save();
+
+      return NextResponse.json(
+        { error: session.statusMessage, sessionId: session._id },
+        { status: 400 }
+      );
+    }
+
+    session.sourceRepository = sourceRepository;
+    session.targetRepository = targetRepository;
+    session.status = 'indexing';
+    session.statusMessage = 'Indexing repositories with Greptile';
+    session.updatedAt = new Date();
+    await session.save();
 
     const indexingPromises = [
       indexRepository(idealRepo, idealBranch),
@@ -44,39 +91,25 @@ export async function POST(req: NextRequest) {
       await Promise.all(indexingPromises);
     } catch (indexingError) {
       console.error('Error during repository indexing:', indexingError);
-      return NextResponse.json({ error: 'Failed to index repositories' }, { status: 500 });
-    }
-    const session = new Session({
-      idealRepo,
-      userRepo,
-      idealBranch,
-      userBranch,
-    });
-
-    try {
+      session.status = 'failed';
+      session.statusMessage = 'Failed to index repositories';
+      session.updatedAt = new Date();
       await session.save();
-    } catch (saveError) {
-      if (saveError instanceof MongoError && saveError.code === 11000) {
-      
-        const concurrentSession = await Session.findOne({
-          idealRepo,
-          userRepo,
-          idealBranch,
-          userBranch,
-        });
-        if (concurrentSession) {
-          return NextResponse.json({
-            message: "Session created concurrently. Your repositories are ready to go.",
-            sessionId: concurrentSession._id,
-          });
-        }
-      }
-      throw saveError; 
+      return NextResponse.json(
+        { error: 'Failed to index repositories', sessionId: session._id },
+        { status: 500 }
+      );
     }
+
+    session.status = 'ready';
+    session.statusMessage = 'Repositories are ready for feature analysis';
+    session.updatedAt = new Date();
+    await session.save();
 
     return NextResponse.json({
       message: "Your repositories are ready to go",
       sessionId: session._id,
+      status: session.status,
     });
 
   } catch (error) {
